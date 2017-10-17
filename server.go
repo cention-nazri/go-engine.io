@@ -1,16 +1,13 @@
 package engineio
 
 import (
-	"bytes"
-	"crypto/md5"
-	"encoding/base64"
-	"fmt"
 	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/googollee/go-engine.io/polling"
 	"github.com/googollee/go-engine.io/websocket"
+	uuid "github.com/satori/go.uuid"
 )
 
 type config struct {
@@ -177,12 +174,6 @@ func (s *Server) onClose(id string) {
 	atomic.AddInt32(&s.currentConnection, -1)
 }
 
-func newId(r *http.Request) string {
-	hash := fmt.Sprintf("%s %s", r.RemoteAddr, time.Now())
-	buf := bytes.NewBuffer(nil)
-	sum := md5.Sum([]byte(hash))
-	encoder := base64.NewEncoder(base64.URLEncoding, buf)
-	encoder.Write(sum[:])
-	encoder.Close()
-	return buf.String()[:20]
+func newId(_ *http.Request) string {
+	return uuid.NewV4().String()
 }
