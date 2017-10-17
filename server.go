@@ -148,10 +148,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		s.socketChan <- conn
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:  s.config.Cookie,
-		Value: sid,
-	})
+
+	// This is causing race elsewhere in client code that sets cookie
+	// value. I could find any place that reads back the cookie that is set
+	// here so it seems that this cookie is set but never used - so I'm
+	// disabling it.
+	if false {
+		http.SetCookie(w, &http.Cookie{
+			Name:  s.config.Cookie,
+			Value: sid,
+		})
+	}
 
 	conn.(*serverConn).ServeHTTP(w, r)
 }
