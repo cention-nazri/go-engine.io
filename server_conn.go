@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -239,7 +240,11 @@ func (c *serverConn) Close() error {
 	if err := c.getCurrent().Close(); err != nil {
 		return err
 	}
-	c.setState(stateClosing)
+	c.stateLocker.Lock()
+	if c.state != stateClosed {
+		c.state = stateClosing
+	}
+	c.stateLocker.Unlock()
 	return nil
 }
 
@@ -317,11 +322,18 @@ func (c *serverConn) OnClose(server transport.Server) {
 		t.Close()
 		c.setUpgrading("", nil)
 	}
-	c.setState(stateClosed)
-	close(c.closed)
-	close(c.readerChan)
-	close(c.pingChan)
-	c.callback.onClose(c.id)
+	c.stateLocker.Lock()
+	if c.state != stateClosed {
+		c.state = stateClosed
+		close(c.closed)
+		close(c.readerChan)
+		close(c.pingChan)
+		c.callback.onClose(c.id)
+	} else {
+		// hoping to find the real cause of the closing of closed channel
+		debug.PrintStack()
+	}
+	c.stateLocker.Unlock()
 }
 
 func (s *serverConn) onOpen() error {
